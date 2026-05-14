@@ -1,14 +1,12 @@
 // Manual probe for the Microsoft Teams third-party app API WebSocket.
 //
-// Run this while Teams is open (ideally during a meeting) and watch both the
-// terminal output AND the Teams window for a pairing dialog.
+// Run this while Teams is open and you are IN A MEETING. Watch the Teams
+// window for a pairing dialog/banner/notification.
 //
 // Usage:
-//   node tools/ws-test.mjs              connect WITHOUT a token param (clean first-time pairing)
-//   node tools/ws-test.mjs --empty      connect WITH an empty token= param (the plugin's current behaviour)
+//   node tools/ws-test.mjs              no token param — tries auto-pairing when canPair becomes true
+//   node tools/ws-test.mjs --empty      empty token= param (the bug we fixed — Teams ignores this)
 //   node tools/ws-test.mjs <token>      connect with a specific token
-//
-// The script stays connected for 60 s, then exits.
 
 import WebSocket from "ws";
 
@@ -25,26 +23,48 @@ const params = new URLSearchParams({
 let mode;
 if (arg === "--empty") {
   params.set("token", "");
-  mode = "empty token= param";
+  mode = "empty token= (broken)";
 } else if (arg && arg !== "--no-token") {
   params.set("token", arg);
   mode = "explicit token";
 } else {
-  mode = "no token param at all";
+  mode = "no token param — will send pair request when canPair=true";
 }
 
 const url = `ws://localhost:8124?${params.toString()}`;
 console.log(`[ws-test] mode: ${mode}`);
 console.log(`[ws-test] connecting: ${url}`);
 
+let requestId = 0;
+let pairRequested = false;
 const ws = new WebSocket(url);
 
 ws.on("open", () => {
-  console.log("[ws-test] OPEN — watch the Teams window for a pairing dialog now");
+  console.log("[ws-test] OPEN");
 });
+
 ws.on("message", (data) => {
-  console.log("[ws-test] MSG:", data.toString());
+  const raw = data.toString();
+  console.log("[ws-test] MSG:", raw);
+
+  try {
+    const msg = JSON.parse(raw);
+
+    // When canPair becomes true, send an explicit pair request.
+    // Some Teams versions require this instead of showing a dialog automatically.
+    const perms = msg?.meetingUpdate?.meetingPermissions;
+    if (perms?.canPair === true && !pairRequested && !arg) {
+      pairRequested = true;
+      const payload = JSON.stringify({ action: "pair", parameters: {}, requestId: ++requestId });
+      console.log("[ws-test] sending pair request:", payload);
+      ws.send(payload);
+      console.log("[ws-test] >>> now watch Teams carefully for a pairing dialog or notification");
+    }
+  } catch {
+    // ignore parse errors
+  }
 });
+
 ws.on("error", (err) => {
   console.log("[ws-test] ERROR:", err.message);
 });
