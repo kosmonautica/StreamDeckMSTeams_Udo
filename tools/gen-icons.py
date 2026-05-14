@@ -146,16 +146,12 @@ def camera(c, fg, bg):
 
 
 def blur(c, fg, bg):
-    """Background blur icon: sharp person silhouette + bokeh circles in background."""
+    """Background blur icon: person silhouette with background blur suggestion."""
     s = c.size
-    # Background bokeh (out-of-focus circles at the four corners, semi-transparent)
-    c.circle(0.21 * s, 0.27 * s, 0.11 * s, fg, 0.40)
-    c.circle(0.80 * s, 0.27 * s, 0.12 * s, fg, 0.40)
-    c.circle(0.19 * s, 0.74 * s, 0.10 * s, fg, 0.40)
-    c.circle(0.81 * s, 0.72 * s, 0.11 * s, fg, 0.40)
-    # Person silhouette (the clear foreground subject): head + torso
-    c.circle(0.50 * s, 0.32 * s, 0.12 * s, fg)
-    c.rounded_rect(0.36 * s, 0.45 * s, 0.64 * s, 0.70 * s, 0.09 * s, fg)
+    # Person head
+    c.circle(0.50 * s, 0.32 * s, 0.13 * s, fg)
+    # Person torso
+    c.rounded_rect(0.35 * s, 0.46 * s, 0.65 * s, 0.72 * s, 0.10 * s, fg)
 
 
 def make(name, bg, glyph, fg, slash, sizes):
