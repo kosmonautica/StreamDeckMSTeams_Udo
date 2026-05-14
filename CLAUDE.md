@@ -88,17 +88,27 @@ Connect URL:
 ws://localhost:8124/?protocol-version=2.0.0&manufacturer=…&device=…&app=…&app-version=…&token=…
 ```
 
-Outbound commands:
+Outbound commands (sent only for user-initiated actions; Teams pushes state automatically on connect):
 ```json
-{ "apiVersion": "2.0.0", "action": "query-meeting-state", "parameters": {}, "requestId": N }
-{ "apiVersion": "2.0.0", "action": "toggle-mute",         "parameters": {}, "requestId": N }
-{ "apiVersion": "2.0.0", "action": "toggle-video",        "parameters": {}, "requestId": N }
+{ "apiVersion": "2.0.0", "action": "toggle-mute",  "parameters": {}, "requestId": N }
+{ "apiVersion": "2.0.0", "action": "toggle-video", "parameters": {}, "requestId": N }
 ```
+
+Note: `query-meeting-state` with `apiVersion` is rejected by Teams ("Does not fit protocol
+standard Invalid action"). Teams automatically pushes `meetingUpdate` on connect and on every
+state change, so no explicit query is needed.
 
 Inbound events:
 ```json
 { "tokenRefresh": "<token>" }
-{ "meetingUpdate": { "meetingState": { "isMuted": bool, "isVideoOn": bool, "isInMeeting": bool, … } } }
+{ "response": "Success", "requestId": 0 }
+{ "meetingUpdate": { "meetingPermissions": { "canToggleMute": bool, "canToggleVideo": bool, … } } }
+{ "meetingUpdate": { "meetingState": { "isMuted": bool, "isVideoOn": bool, "isInMeeting": bool, … }, "meetingPermissions": { … } } }
+{ "errorMsg": "Does not fit protocol standard…" }
 ```
+
+Teams always sends a `meetingUpdate` with `meetingPermissions` on connect. When in a meeting it
+additionally includes `meetingState`. Only `meetingState` drives the plugin's internal state and
+button rendering.
 
 [teams-api]: https://learn.microsoft.com/en-us/microsoftteams/platform/apps-in-teams-meetings/build-apps-for-teams-meeting-stage

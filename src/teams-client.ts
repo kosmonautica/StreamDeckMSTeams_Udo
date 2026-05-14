@@ -115,9 +115,10 @@ export class TeamsClient extends EventEmitter {
 
     ws.on("open", () => {
       this.reconnectAttempts = 0;
-      // A token-less connection stays open until the user accepts the pairing
-      // dialog in Teams; querying state confirms whether we are already paired.
-      this.send("query-meeting-state");
+      // Teams automatically pushes a meetingUpdate on connect, so no explicit
+      // state query is needed. Any successful open → status becomes "connecting"
+      // and transitions to "paired" once the first meetingUpdate arrives.
+      streamDeck.logger.info("Teams WebSocket open");
     });
 
     ws.on("message", (data) => this.handleMessage(data.toString()));
@@ -167,8 +168,8 @@ export class TeamsClient extends EventEmitter {
       this.setStatus("paired");
     }
 
-    if (typeof msg.error === "string") {
-      streamDeck.logger.warn(`Teams API error: ${msg.error}`);
+    if (typeof msg.errorMsg === "string") {
+      streamDeck.logger.warn(`Teams API error: ${msg.errorMsg}`);
     }
   }
 

@@ -128,11 +128,10 @@ describe("TeamsClient", () => {
   });
 
   describe("on WebSocket open", () => {
-    it("sends query-meeting-state", async () => {
-      const client = await makeConnectedClient();
+    it("does not send any message (Teams pushes state automatically)", async () => {
+      await makeConnectedClient();
       ws().emit("open");
-      const payload = JSON.parse(ws().send.mock.calls[0][0]);
-      expect(payload.action).toBe("query-meeting-state");
+      expect(ws().send).not.toHaveBeenCalled();
     });
 
     it("resets reconnect counter so next failure starts fresh backoff", async () => {
@@ -212,24 +211,53 @@ describe("TeamsClient", () => {
     });
   });
 
-  describe("message: response Success (query response)", () => {
+  describe("message: response Success (Teams handshake)", () => {
     it("sets status to 'paired'", async () => {
       const client = await makeConnectedClient({ token: "t" });
       ws().emit("open");
-      ws().emit("message", JSON.stringify({ response: "Success", meetingUpdate: undefined }));
+      ws().emit("message", JSON.stringify({ response: "Success", requestId: 0 }));
       expect(client.status).toBe("paired");
     });
   });
 
-  describe("message: error field", () => {
+  describe("message: meetingUpdate with only meetingPermissions (no meeting active)", () => {
+    it("sets status to 'paired' without emitting a state event", async () => {
+      const client = await makeConnectedClient({ token: "t" });
+      const stateListener = vi.fn();
+      client.on("state", stateListener);
+      ws().emit("open");
+      ws().emit(
+        "message",
+        JSON.stringify({
+          meetingUpdate: {
+            meetingPermissions: { canToggleMute: true, canToggleVideo: true, canLeave: true },
+          },
+        }),
+      );
+      expect(client.status).toBe("paired");
+      expect(stateListener).not.toHaveBeenCalled();
+    });
+
+    it("does not change isInMeeting from its default false", async () => {
+      const client = await makeConnectedClient({ token: "t" });
+      ws().emit("open");
+      ws().emit(
+        "message",
+        JSON.stringify({ meetingUpdate: { meetingPermissions: { canLeave: true } } }),
+      );
+      expect(client.state.isInMeeting).toBe(false);
+    });
+  });
+
+  describe("message: errorMsg field", () => {
     it("logs a warning and does not throw", async () => {
       const client = await makeConnectedClient();
       ws().emit("open");
       expect(() => {
-        ws().emit("message", JSON.stringify({ error: "Action not supported" }));
+        ws().emit("message", JSON.stringify({ errorMsg: "Does not fit protocol standardInvalid action" }));
       }).not.toThrow();
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Action not supported"),
+        expect.stringContaining("Does not fit protocol"),
       );
     });
   });
@@ -323,7 +351,6 @@ describe("TeamsClient", () => {
       client.toggleMute();
       client.toggleMute();
       const [first, second] = ws().send.mock.calls.map((c) => JSON.parse(c[0]));
-      // First call is query-meeting-state (requestId=1), then toggle calls
       expect(second.requestId).toBeGreaterThan(first.requestId);
     });
 
