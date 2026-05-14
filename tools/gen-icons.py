@@ -57,6 +57,16 @@ class Canvas:
                 cov = max(0.0, min(1.0, r - d + 0.5))
                 self._blend(x, y, color, cov * alpha)
 
+    def arc(self, cx, cy, r, a0, a1, width, color, alpha=1.0):
+        """Draw an arc from angle a0 to a1 (radians). In screen coords y+ is down."""
+        steps = max(int(r * abs(a1 - a0)) * 4 + 1, 30)
+        for i in range(steps + 1):
+            t = i / steps
+            angle = a0 + (a1 - a0) * t
+            x = cx + r * math.cos(angle)
+            y = cy + r * math.sin(angle)
+            self.circle(x, y, width / 2, color, alpha)
+
     def line(self, x0, y0, x1, y1, width, color, alpha=1.0):
         steps = int(math.hypot(x1 - x0, y1 - y0)) * 3 + 1
         for i in range(steps + 1):
@@ -102,28 +112,53 @@ class Canvas:
             f.write(png)
 
 
-def mic(c, fg):
+def mic(c, fg, bg):
+    """Standard studio/podcast mic: vertical capsule + U-arc housing + stem + base."""
     s = c.size
-    c.rounded_rect(0.38 * s, 0.15 * s, 0.62 * s, 0.48 * s, 0.10 * s, fg)
-    c.line(0.50 * s, 0.48 * s, 0.50 * s, 0.65 * s, 0.06 * s, fg)
-    c.rounded_rect(0.42 * s, 0.62 * s, 0.58 * s, 0.75 * s, 0.03 * s, fg)
-    c.circle(0.36 * s, 0.58 * s, 0.04 * s, fg)
-    c.circle(0.64 * s, 0.58 * s, 0.04 * s, fg)
+    # Capsule (the mic body, tall rounded rect)
+    c.rounded_rect(0.37 * s, 0.10 * s, 0.63 * s, 0.52 * s, 0.13 * s, fg)
+    # U-shaped housing arc: a0=0 (right) sweeping through pi/2 (down) to pi (left)
+    # Arc spans from (0.73, 0.42) around bottom (0.50, 0.65) to (0.27, 0.42)
+    c.arc(0.50 * s, 0.42 * s, 0.23 * s, 0, math.pi, 0.05 * s, fg)
+    # Stem: housing bottom to base
+    c.line(0.50 * s, 0.65 * s, 0.50 * s, 0.75 * s, 0.05 * s, fg)
+    # Base: horizontal bar
+    c.line(0.34 * s, 0.77 * s, 0.66 * s, 0.77 * s, 0.06 * s, fg)
 
 
-def camera(c, fg):
+def camera(c, fg, bg):
+    """Classic camera icon: landscape body + viewfinder bump + lens ring."""
     s = c.size
-    c.rounded_rect(0.22 * s, 0.32 * s, 0.64 * s, 0.70 * s, 0.08 * s, fg)
-    c.circle(0.43 * s, 0.51 * s, 0.12 * s, fg, 0.3)
-    c.circle(0.43 * s, 0.51 * s, 0.10 * s, WHITE if fg == WHITE else fg)
-    c.rounded_rect(0.64 * s, 0.32 * s, 0.74 * s, 0.46 * s, 0.04 * s, fg)
+    # Camera body (wider than tall, landscape)
+    c.rounded_rect(0.14 * s, 0.37 * s, 0.80 * s, 0.72 * s, 0.08 * s, fg)
+    # Viewfinder bump: sits on top of the body, slightly left of center
+    c.rounded_rect(0.31 * s, 0.25 * s, 0.56 * s, 0.40 * s, 0.05 * s, fg)
+    # Lens: outer filled circle
+    c.circle(0.46 * s, 0.545 * s, 0.145 * s, fg)
+    # Lens: hollow ring (punch out with background color)
+    c.circle(0.46 * s, 0.545 * s, 0.095 * s, bg)
+    # Lens: small inner glass element
+    c.circle(0.46 * s, 0.545 * s, 0.045 * s, fg)
+
+
+def blur(c, fg, bg):
+    """Background blur icon: sharp person silhouette + bokeh circles in background."""
+    s = c.size
+    # Background bokeh (out-of-focus circles at the four corners, semi-transparent)
+    c.circle(0.21 * s, 0.27 * s, 0.11 * s, fg, 0.40)
+    c.circle(0.80 * s, 0.27 * s, 0.12 * s, fg, 0.40)
+    c.circle(0.19 * s, 0.74 * s, 0.10 * s, fg, 0.40)
+    c.circle(0.81 * s, 0.72 * s, 0.11 * s, fg, 0.40)
+    # Person silhouette (the clear foreground subject): head + torso
+    c.circle(0.50 * s, 0.32 * s, 0.12 * s, fg)
+    c.rounded_rect(0.36 * s, 0.45 * s, 0.64 * s, 0.70 * s, 0.09 * s, fg)
 
 
 def make(name, bg, glyph, fg, slash, sizes):
     for size in sizes:
         c = Canvas(size)
         c.rounded_rect(0, 0, size, size, size * 0.18, bg)
-        glyph(c, fg)
+        glyph(c, fg, bg)
         if slash:
             s = size
             c.line(0.24 * s, 0.24 * s, 0.76 * s, 0.76 * s, 0.10 * s, bg)
@@ -134,29 +169,19 @@ def make(name, bg, glyph, fg, slash, sizes):
         _ = base
 
 
-def blur(c, fg):
-    s = c.size
-    c.rounded_rect(0.28 * s, 0.28 * s, 0.72 * s, 0.72 * s, 0.08 * s, fg)
-    c.circle(0.42 * s, 0.38 * s, 0.06 * s, fg)
-    c.circle(0.58 * s, 0.48 * s, 0.07 * s, fg)
-    c.circle(0.50 * s, 0.62 * s, 0.08 * s, fg)
-    c.circle(0.40 * s, 0.68 * s, 0.06 * s, fg)
-    c.circle(0.64 * s, 0.65 * s, 0.07 * s, fg)
-
-
 ACTION_SIZES = (72, 144)
 PLUGIN_SIZES = (28, 56)
 
-make("actions/mic-on", GREEN, mic, WHITE, False, ACTION_SIZES)
-make("actions/mic-off", RED, mic, WHITE, True, ACTION_SIZES)
-make("actions/mic-inactive", GREY, mic, FADED, False, ACTION_SIZES)
-make("actions/camera-on", GREEN, camera, WHITE, False, ACTION_SIZES)
-make("actions/camera-off", RED, camera, WHITE, True, ACTION_SIZES)
-make("actions/camera-inactive", GREY, camera, FADED, False, ACTION_SIZES)
-make("actions/blur-on", GREEN, blur, WHITE, False, ACTION_SIZES)
-make("actions/blur-off", RED, blur, WHITE, True, ACTION_SIZES)
-make("actions/blur-inactive", GREY, blur, FADED, False, ACTION_SIZES)
-make("plugin/icon", DARK, mic, WHITE, False, PLUGIN_SIZES)
+make("actions/mic-on",       GREEN, mic,    WHITE, False, ACTION_SIZES)
+make("actions/mic-off",      RED,   mic,    WHITE, True,  ACTION_SIZES)
+make("actions/mic-inactive", GREY,  mic,    FADED, False, ACTION_SIZES)
+make("actions/camera-on",       GREEN, camera, WHITE, False, ACTION_SIZES)
+make("actions/camera-off",      RED,   camera, WHITE, True,  ACTION_SIZES)
+make("actions/camera-inactive", GREY,  camera, FADED, False, ACTION_SIZES)
+make("actions/blur-on",       GREEN, blur, WHITE, False, ACTION_SIZES)
+make("actions/blur-off",      RED,   blur, WHITE, True,  ACTION_SIZES)
+make("actions/blur-inactive", GREY,  blur, FADED, False, ACTION_SIZES)
+make("plugin/icon",          DARK, mic, WHITE, False, PLUGIN_SIZES)
 make("plugin/category-icon", DARK, mic, WHITE, False, PLUGIN_SIZES)
 
 print("Icons written to", os.path.normpath(OUT))
