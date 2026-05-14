@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "rollup -c",
-    "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.kosmonautica.teams-control\""
+    "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.kosmonautica.teams-control\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@elgato/streamdeck": "^1.0.0",
@@ -19,6 +21,7 @@
     "@types/ws": "^8.5.13",
     "rollup": "^4.24.0",
     "tslib": "^2.8.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.6"
   }
 }

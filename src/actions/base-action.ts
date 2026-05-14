@@ -27,6 +27,7 @@ export type ActionConfig = {
 export abstract class TeamsToggleAction extends SingletonAction {
   protected abstract readonly config: ActionConfig;
 
+  /** Subscribes to Teams client events and renders the key's initial state. */
   override async onWillAppear(ev: WillAppearEvent): Promise<void> {
     teamsClient.on("state", this.render);
     teamsClient.on("status", this.render);
@@ -34,12 +35,16 @@ export abstract class TeamsToggleAction extends SingletonAction {
     this.renderOne(ev.action);
   }
 
+  /** Cleans up event subscriptions when the key leaves the visible layout. */
   override onWillDisappear(): void {
     teamsClient.off("state", this.render);
     teamsClient.off("status", this.render);
   }
 
+  /** Forwards the press to the Teams client; silently ignored outside a meeting. */
   override onKeyDown(_ev: KeyDownEvent): void {
+    // Recover a dropped connection (and re-trigger pairing) on demand.
+    teamsClient.ensureConnected();
     // Outside a meeting the Teams API rejects the toggle, so the key is inert.
     if (!teamsClient.state.isInMeeting) return;
     this.config.toggle();
@@ -55,7 +60,17 @@ export abstract class TeamsToggleAction extends SingletonAction {
   private renderOne(action: Action): void {
     // The plugin only registers Keypad controllers, so every action is a key.
     if (!action.isKey()) return;
-    const { state } = teamsClient;
+    const { state, status } = teamsClient;
+
+    // Show a diagnostic title so connection state is visible directly on the key.
+    const statusTitle: Record<typeof status, string> = {
+      connecting: "...",
+      unpaired: "PAIR",  // Teams dialog is waiting to be accepted
+      disconnected: "off",
+      paired: "",
+    };
+    void action.setTitle(statusTitle[status] ?? "");
+
     if (!state.isInMeeting) {
       void action.setImage(this.config.inactiveIcon);
       void action.setState(0);

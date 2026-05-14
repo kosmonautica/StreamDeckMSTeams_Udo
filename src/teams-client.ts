@@ -35,18 +35,22 @@ const APP = "TeamsControl";
 const APP_VERSION = "1.0.0";
 
 /**
- * Singleton WebSocket client for the Microsoft Teams third-party app API.
+ * WebSocket client for the Microsoft Teams third-party app API.
  *
  * A single connection is shared by every action. State changes are broadcast
  * via the `"state"` event; connection changes via the `"status"` event.
+ *
+ * Use the exported `teamsClient` singleton in production. Export the class
+ * separately so unit tests can create isolated instances.
  */
-class TeamsClient extends EventEmitter {
+export class TeamsClient extends EventEmitter {
   private ws?: WebSocket;
   private token?: string;
   private requestId = 0;
   private reconnectAttempts = 0;
   private reconnectTimer?: NodeJS.Timeout;
   private started = false;
+  private pairRequested = false;
 
   public state: MeetingState = { ...DEFAULT_STATE };
   public status: ConnectionStatus = "disconnected";
@@ -61,10 +65,32 @@ class TeamsClient extends EventEmitter {
     this.connect();
   }
 
+  /**
+   * Reconnects immediately if the socket has dropped, resetting the backoff.
+   *
+   * Called on key presses so a button push recovers a stale connection instead
+   * of doing nothing while a long backoff timer is pending.
+   */
+  public ensureConnected(): void {
+    if (!this.started) {
+      void this.start();
+      return;
+    }
+    const live =
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING);
+    if (live) return;
+    this.reconnectAttempts = 0;
+    this.connect();
+  }
+
+  /** Sends a mute-toggle command. Only effective when a meeting is active. */
   public toggleMute(): void {
     this.send("toggle-mute");
   }
 
+  /** Sends a video-toggle command. Only effective when a meeting is active. */
   public toggleVideo(): void {
     this.send("toggle-video");
   }
@@ -73,6 +99,8 @@ class TeamsClient extends EventEmitter {
     clearTimeout(this.reconnectTimer);
     this.setStatus("connecting");
 
+    // Omit the token param entirely when unpaired — an empty token= value causes
+    // Teams to silently ignore the connection instead of showing the pairing dialog.
     const params = new URLSearchParams({
       "protocol-version": "2.0.0",
       manufacturer: MANUFACTURER,
@@ -80,16 +108,18 @@ class TeamsClient extends EventEmitter {
       app: APP,
       "app-version": APP_VERSION,
     });
-    if (this.token) params.set("token", this.token);
+    if (this.token) {
+      params.set("token", this.token);
+    }
 
-    const ws = new WebSocket(`${HOST}/?${params.toString()}`);
+    const ws = new WebSocket(`${HOST}?${params.toString()}`);
     this.ws = ws;
+    streamDeck.logger.info(`Connecting to Teams API (paired: ${Boolean(this.token)})`);
 
     ws.on("open", () => {
       this.reconnectAttempts = 0;
-      // A token-less connection stays open until the user accepts the pairing
-      // dialog in Teams; querying state confirms whether we are already paired.
-      this.send("query-meeting-state");
+      this.pairRequested = false;
+      streamDeck.logger.info("Teams WebSocket open");
     });
 
     ws.on("message", (data) => this.handleMessage(data.toString()));
@@ -129,18 +159,28 @@ class TeamsClient extends EventEmitter {
       return;
     }
 
-    const update = msg.meetingUpdate as { meetingState?: Partial<MeetingState> } | undefined;
+    const update = msg.meetingUpdate as {
+      meetingState?: Partial<MeetingState>;
+      meetingPermissions?: { canPair?: boolean };
+    } | undefined;
+
     if (update?.meetingState) {
       this.state = { ...DEFAULT_STATE, ...update.meetingState };
       this.setStatus("paired");
       this.emit("state", this.state);
     } else if (msg.meetingUpdate !== undefined || msg.response === "Success") {
-      // Any successful response means the token is valid.
-      this.setStatus("paired");
+      if (!this.token && !this.pairRequested && update?.meetingPermissions?.canPair) {
+        // Teams is ready to pair: send the pair request so Teams issues a token.
+        // No user action in Teams is required — Teams responds with tokenRefresh.
+        this.pairRequested = true;
+        this.sendRaw({ action: "pair", parameters: {}, requestId: ++this.requestId });
+        streamDeck.logger.info("Sent pair request to Teams");
+      }
+      this.setStatus(this.token ? "paired" : "unpaired");
     }
 
-    if (typeof msg.error === "string") {
-      streamDeck.logger.warn(`Teams API error: ${msg.error}`);
+    if (typeof msg.errorMsg === "string") {
+      streamDeck.logger.warn(`Teams API error: ${msg.errorMsg}`);
     }
   }
 
@@ -157,6 +197,15 @@ class TeamsClient extends EventEmitter {
         requestId: ++this.requestId,
       }),
     );
+  }
+
+  // Some Teams actions (pair) must be sent without apiVersion.
+  private sendRaw(payload: Record<string, unknown>): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      streamDeck.logger.warn(`Cannot send "${payload.action}": Teams not connected.`);
+      return;
+    }
+    this.ws.send(JSON.stringify(payload));
   }
 
   private scheduleReconnect(): void {
