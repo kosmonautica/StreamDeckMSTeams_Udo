@@ -98,16 +98,18 @@ export class TeamsClient extends EventEmitter {
     clearTimeout(this.reconnectTimer);
     this.setStatus("connecting");
 
-    // Teams expects the `token` parameter to be present even before pairing —
-    // an empty value signals "not paired yet" and triggers the pairing prompt.
+    // Omit the token param entirely when unpaired — an empty token= value causes
+    // Teams to silently ignore the connection instead of showing the pairing dialog.
     const params = new URLSearchParams({
-      token: this.token ?? "",
       "protocol-version": "2.0.0",
       manufacturer: MANUFACTURER,
       device: DEVICE,
       app: APP,
       "app-version": APP_VERSION,
     });
+    if (this.token) {
+      params.set("token", this.token);
+    }
 
     const ws = new WebSocket(`${HOST}?${params.toString()}`);
     this.ws = ws;
@@ -164,8 +166,10 @@ export class TeamsClient extends EventEmitter {
       this.setStatus("paired");
       this.emit("state", this.state);
     } else if (msg.meetingUpdate !== undefined || msg.response === "Success") {
-      // Any successful response means the token is valid.
-      this.setStatus("paired");
+      // Receiving meetingUpdate means the connection is alive.
+      // Without a token we only get meetingPermissions (not meetingState), so the
+      // user still needs to accept the pairing dialog in Teams.
+      this.setStatus(this.token ? "paired" : "unpaired");
     }
 
     if (typeof msg.errorMsg === "string") {

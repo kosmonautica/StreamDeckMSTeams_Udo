@@ -98,10 +98,10 @@ describe("TeamsClient", () => {
       expect(url.searchParams.get("app")).toBe("TeamsControl");
     });
 
-    it("includes an empty token param when not yet paired", async () => {
+    it("omits the token param entirely when not yet paired", async () => {
       await makeConnectedClient({ token: undefined });
-      // Teams needs the token param present (empty) to trigger the pairing prompt.
-      expect(new URL(ws().url).searchParams.get("token")).toBe("");
+      // An empty token= causes Teams to silently ignore the connection; omit it.
+      expect(new URL(ws().url).searchParams.has("token")).toBe(false);
     });
 
     it("appends stored token as query param", async () => {
@@ -221,7 +221,7 @@ describe("TeamsClient", () => {
   });
 
   describe("message: meetingUpdate with only meetingPermissions (no meeting active)", () => {
-    it("sets status to 'paired' without emitting a state event", async () => {
+    it("sets status to 'paired' when a token is present", async () => {
       const client = await makeConnectedClient({ token: "t" });
       const stateListener = vi.fn();
       client.on("state", stateListener);
@@ -236,6 +236,20 @@ describe("TeamsClient", () => {
       );
       expect(client.status).toBe("paired");
       expect(stateListener).not.toHaveBeenCalled();
+    });
+
+    it("sets status to 'unpaired' when there is no token (pairing still needed)", async () => {
+      const client = await makeConnectedClient({ token: undefined });
+      ws().emit("open");
+      ws().emit(
+        "message",
+        JSON.stringify({
+          meetingUpdate: {
+            meetingPermissions: { canToggleMute: true, canPair: true },
+          },
+        }),
+      );
+      expect(client.status).toBe("unpaired");
     });
 
     it("does not change isInMeeting from its default false", async () => {
