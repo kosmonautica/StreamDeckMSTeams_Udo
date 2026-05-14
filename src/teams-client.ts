@@ -35,12 +35,15 @@ const APP = "TeamsControl";
 const APP_VERSION = "1.0.0";
 
 /**
- * Singleton WebSocket client for the Microsoft Teams third-party app API.
+ * WebSocket client for the Microsoft Teams third-party app API.
  *
  * A single connection is shared by every action. State changes are broadcast
  * via the `"state"` event; connection changes via the `"status"` event.
+ *
+ * Use the exported `teamsClient` singleton in production. Export the class
+ * separately so unit tests can create isolated instances.
  */
-class TeamsClient extends EventEmitter {
+export class TeamsClient extends EventEmitter {
   private ws?: WebSocket;
   private token?: string;
   private requestId = 0;
@@ -61,10 +64,12 @@ class TeamsClient extends EventEmitter {
     this.connect();
   }
 
+  /** Sends a mute-toggle command. Only effective when a meeting is active. */
   public toggleMute(): void {
     this.send("toggle-mute");
   }
 
+  /** Sends a video-toggle command. Only effective when a meeting is active. */
   public toggleVideo(): void {
     this.send("toggle-video");
   }

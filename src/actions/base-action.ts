@@ -27,6 +27,7 @@ export type ActionConfig = {
 export abstract class TeamsToggleAction extends SingletonAction {
   protected abstract readonly config: ActionConfig;
 
+  /** Subscribes to Teams client events and renders the key's initial state. */
   override async onWillAppear(ev: WillAppearEvent): Promise<void> {
     teamsClient.on("state", this.render);
     teamsClient.on("status", this.render);
@@ -34,11 +35,13 @@ export abstract class TeamsToggleAction extends SingletonAction {
     this.renderOne(ev.action);
   }
 
+  /** Cleans up event subscriptions when the key leaves the visible layout. */
   override onWillDisappear(): void {
     teamsClient.off("state", this.render);
     teamsClient.off("status", this.render);
   }
 
+  /** Forwards the press to the Teams client; silently ignored outside a meeting. */
   override onKeyDown(_ev: KeyDownEvent): void {
     // Outside a meeting the Teams API rejects the toggle, so the key is inert.
     if (!teamsClient.state.isInMeeting) return;
