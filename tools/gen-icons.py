@@ -127,18 +127,16 @@ def mic(c, fg, bg):
 
 
 def camera(c, fg, bg):
-    """Classic camera icon: landscape body + viewfinder bump + lens ring."""
+    """Video camera icon: rectangular body + rightward-pointing triangle (lens horn)."""
     s = c.size
-    # Camera body (wider than tall, landscape)
-    c.rounded_rect(0.14 * s, 0.37 * s, 0.80 * s, 0.72 * s, 0.08 * s, fg)
-    # Viewfinder bump: sits on top of the body, slightly left of center
-    c.rounded_rect(0.31 * s, 0.25 * s, 0.56 * s, 0.40 * s, 0.05 * s, fg)
-    # Lens: outer filled circle
-    c.circle(0.46 * s, 0.545 * s, 0.145 * s, fg)
-    # Lens: hollow ring (punch out with background color)
-    c.circle(0.46 * s, 0.545 * s, 0.095 * s, bg)
-    # Lens: small inner glass element
-    c.circle(0.46 * s, 0.545 * s, 0.045 * s, fg)
+    # Camera body
+    c.rounded_rect(0.13 * s, 0.33 * s, 0.61 * s, 0.67 * s, 0.08 * s, fg)
+    # Lens horn: filled triangle pointing right
+    c.triangle([
+        (0.62 * s, 0.38 * s),
+        (0.62 * s, 0.62 * s),
+        (0.84 * s, 0.50 * s),
+    ], fg)
 
 
 def blur(c, fg, bg):
