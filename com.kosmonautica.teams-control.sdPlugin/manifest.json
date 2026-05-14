@@ -1,0 +1,69 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "Name": "Teams Control",
+  "Version": "1.0.0.0",
+  "Author": "Kosmonautica",
+  "Description": "Toggle Microsoft Teams mute and camera from your Stream Deck — works globally, even when Teams is in the background. Uses the official Teams third-party app API.",
+  "Category": "Teams Control",
+  "CategoryIcon": "imgs/plugin/category-icon",
+  "Icon": "imgs/plugin/icon",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.5"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "CodePath": "bin/plugin.js",
+  "Actions": [
+    {
+      "Name": "Teams Mute",
+      "UUID": "com.kosmonautica.teams-control.mute",
+      "Icon": "imgs/actions/mic-on",
+      "Tooltip": "Toggle your microphone in a Microsoft Teams meeting.",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/mic-on",
+          "Name": "Live",
+          "Title": ""
+        },
+        {
+          "Image": "imgs/actions/mic-off",
+          "Name": "Muted",
+          "Title": ""
+        }
+      ]
+    },
+    {
+      "Name": "Teams Camera",
+      "UUID": "com.kosmonautica.teams-control.camera",
+      "Icon": "imgs/actions/camera-on",
+      "Tooltip": "Toggle your camera in a Microsoft Teams meeting.",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/camera-on",
+          "Name": "On",
+          "Title": ""
+        },
+        {
+          "Image": "imgs/actions/camera-off",
+          "Name": "Off",
+          "Title": ""
+        }
+      ]
+    }
+  ]
+}

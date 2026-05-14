@@ -1,0 +1,24 @@
+{
+  "name": "streamdeck-teams-control",
+  "version": "1.0.0",
+  "description": "Elgato Stream Deck plugin to toggle Microsoft Teams mute and camera globally via the Teams third-party app API.",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.kosmonautica.teams-control\""
+  },
+  "dependencies": {
+    "@elgato/streamdeck": "^1.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-typescript": "^12.1.1",
+    "@tsconfig/node20": "^20.1.4",
+    "@types/ws": "^8.5.13",
+    "rollup": "^4.24.0",
+    "tslib": "^2.8.0",
+    "typescript": "^5.6.3"
+  }
+}
