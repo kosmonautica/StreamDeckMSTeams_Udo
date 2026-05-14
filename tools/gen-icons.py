@@ -104,20 +104,19 @@ class Canvas:
 
 def mic(c, fg):
     s = c.size
-    c.rounded_rect(0.42 * s, 0.17 * s, 0.58 * s, 0.50 * s, 0.08 * s, fg)
-    c.line(0.50 * s, 0.50 * s, 0.50 * s, 0.66 * s, 0.05 * s, fg)
-    c.line(0.36 * s, 0.74 * s, 0.64 * s, 0.74 * s, 0.05 * s, fg)
-    c.line(0.34 * s, 0.45 * s, 0.34 * s, 0.55 * s, 0.045 * s, fg)
-    c.line(0.66 * s, 0.45 * s, 0.66 * s, 0.55 * s, 0.045 * s, fg)
-    c.line(0.34 * s, 0.55 * s, 0.50 * s, 0.66 * s, 0.045 * s, fg)
-    c.line(0.66 * s, 0.55 * s, 0.50 * s, 0.66 * s, 0.045 * s, fg)
+    c.rounded_rect(0.38 * s, 0.15 * s, 0.62 * s, 0.48 * s, 0.10 * s, fg)
+    c.line(0.50 * s, 0.48 * s, 0.50 * s, 0.65 * s, 0.06 * s, fg)
+    c.rounded_rect(0.42 * s, 0.62 * s, 0.58 * s, 0.75 * s, 0.03 * s, fg)
+    c.circle(0.36 * s, 0.58 * s, 0.04 * s, fg)
+    c.circle(0.64 * s, 0.58 * s, 0.04 * s, fg)
 
 
 def camera(c, fg):
     s = c.size
-    c.rounded_rect(0.26 * s, 0.36 * s, 0.60 * s, 0.64 * s, 0.06 * s, fg)
-    c.triangle([(0.62 * s, 0.42 * s), (0.62 * s, 0.58 * s),
-                (0.76 * s, 0.50 * s)], fg)
+    c.rounded_rect(0.22 * s, 0.32 * s, 0.64 * s, 0.70 * s, 0.08 * s, fg)
+    c.circle(0.43 * s, 0.51 * s, 0.12 * s, fg, 0.3)
+    c.circle(0.43 * s, 0.51 * s, 0.10 * s, WHITE if fg == WHITE else fg)
+    c.rounded_rect(0.64 * s, 0.32 * s, 0.74 * s, 0.46 * s, 0.04 * s, fg)
 
 
 def make(name, bg, glyph, fg, slash, sizes):
@@ -135,6 +134,16 @@ def make(name, bg, glyph, fg, slash, sizes):
         _ = base
 
 
+def blur(c, fg):
+    s = c.size
+    c.rounded_rect(0.28 * s, 0.28 * s, 0.72 * s, 0.72 * s, 0.08 * s, fg)
+    c.circle(0.42 * s, 0.38 * s, 0.06 * s, fg)
+    c.circle(0.58 * s, 0.48 * s, 0.07 * s, fg)
+    c.circle(0.50 * s, 0.62 * s, 0.08 * s, fg)
+    c.circle(0.40 * s, 0.68 * s, 0.06 * s, fg)
+    c.circle(0.64 * s, 0.65 * s, 0.07 * s, fg)
+
+
 ACTION_SIZES = (72, 144)
 PLUGIN_SIZES = (28, 56)
 
@@ -144,6 +153,9 @@ make("actions/mic-inactive", GREY, mic, FADED, False, ACTION_SIZES)
 make("actions/camera-on", GREEN, camera, WHITE, False, ACTION_SIZES)
 make("actions/camera-off", RED, camera, WHITE, True, ACTION_SIZES)
 make("actions/camera-inactive", GREY, camera, FADED, False, ACTION_SIZES)
+make("actions/blur-on", GREEN, blur, WHITE, False, ACTION_SIZES)
+make("actions/blur-off", RED, blur, WHITE, True, ACTION_SIZES)
+make("actions/blur-inactive", GREY, blur, FADED, False, ACTION_SIZES)
 make("plugin/icon", DARK, mic, WHITE, False, PLUGIN_SIZES)
 make("plugin/category-icon", DARK, mic, WHITE, False, PLUGIN_SIZES)
 
