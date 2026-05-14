@@ -172,6 +172,7 @@ export class TeamsClient extends EventEmitter {
     if (update?.meetingState) {
       this.state = { ...DEFAULT_STATE, ...update.meetingState };
       this.setStatus("paired");
+      streamDeck.logger.info(`Meeting state updated: ${JSON.stringify(this.state)}`);
       this.emit("state", this.state);
     } else if (msg.meetingUpdate !== undefined || msg.response === "Success") {
       if (!this.token && !this.pairRequested && update?.meetingPermissions?.canPair) {
