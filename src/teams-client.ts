@@ -97,6 +97,11 @@ export class TeamsClient extends EventEmitter {
 
   /** Sends a background blur toggle command. Only effective when a meeting is active. */
   public toggleBackgroundBlur(): void {
+    // Optimistically update state since Teams doesn't send blur updates back
+    if (this.state.isInMeeting) {
+      this.state.isBackgroundBlurred = !this.state.isBackgroundBlurred;
+      this.emit("state", this.state);
+    }
     this.send("toggle-background-blur");
   }
 
