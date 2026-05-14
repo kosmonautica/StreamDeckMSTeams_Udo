@@ -50,6 +50,7 @@ export class TeamsClient extends EventEmitter {
   private reconnectAttempts = 0;
   private reconnectTimer?: NodeJS.Timeout;
   private started = false;
+  private pairRequested = false;
 
   public state: MeetingState = { ...DEFAULT_STATE };
   public status: ConnectionStatus = "disconnected";
@@ -117,9 +118,7 @@ export class TeamsClient extends EventEmitter {
 
     ws.on("open", () => {
       this.reconnectAttempts = 0;
-      // Teams automatically pushes a meetingUpdate on connect, so no explicit
-      // state query is needed. Any successful open → status becomes "connecting"
-      // and transitions to "paired" once the first meetingUpdate arrives.
+      this.pairRequested = false;
       streamDeck.logger.info("Teams WebSocket open");
     });
 
@@ -160,15 +159,23 @@ export class TeamsClient extends EventEmitter {
       return;
     }
 
-    const update = msg.meetingUpdate as { meetingState?: Partial<MeetingState> } | undefined;
+    const update = msg.meetingUpdate as {
+      meetingState?: Partial<MeetingState>;
+      meetingPermissions?: { canPair?: boolean };
+    } | undefined;
+
     if (update?.meetingState) {
       this.state = { ...DEFAULT_STATE, ...update.meetingState };
       this.setStatus("paired");
       this.emit("state", this.state);
     } else if (msg.meetingUpdate !== undefined || msg.response === "Success") {
-      // Receiving meetingUpdate means the connection is alive.
-      // Without a token we only get meetingPermissions (not meetingState), so the
-      // user still needs to accept the pairing dialog in Teams.
+      if (!this.token && !this.pairRequested && update?.meetingPermissions?.canPair) {
+        // Teams is ready to pair: send the pair request so Teams issues a token.
+        // No user action in Teams is required — Teams responds with tokenRefresh.
+        this.pairRequested = true;
+        this.sendRaw({ action: "pair", parameters: {}, requestId: ++this.requestId });
+        streamDeck.logger.info("Sent pair request to Teams");
+      }
       this.setStatus(this.token ? "paired" : "unpaired");
     }
 
@@ -190,6 +197,15 @@ export class TeamsClient extends EventEmitter {
         requestId: ++this.requestId,
       }),
     );
+  }
+
+  // Some Teams actions (pair) must be sent without apiVersion.
+  private sendRaw(payload: Record<string, unknown>): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      streamDeck.logger.warn(`Cannot send "${payload.action}": Teams not connected.`);
+      return;
+    }
+    this.ws.send(JSON.stringify(payload));
   }
 
   private scheduleReconnect(): void {

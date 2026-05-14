@@ -220,7 +220,7 @@ describe("TeamsClient", () => {
     });
   });
 
-  describe("message: meetingUpdate with only meetingPermissions (no meeting active)", () => {
+  describe("message: meetingUpdate with only meetingPermissions", () => {
     it("sets status to 'paired' when a token is present", async () => {
       const client = await makeConnectedClient({ token: "t" });
       const stateListener = vi.fn();
@@ -238,18 +238,46 @@ describe("TeamsClient", () => {
       expect(stateListener).not.toHaveBeenCalled();
     });
 
-    it("sets status to 'unpaired' when there is no token (pairing still needed)", async () => {
+    it("sets status to 'unpaired' when there is no token", async () => {
       const client = await makeConnectedClient({ token: undefined });
       ws().emit("open");
       ws().emit(
         "message",
-        JSON.stringify({
-          meetingUpdate: {
-            meetingPermissions: { canToggleMute: true, canPair: true },
-          },
-        }),
+        JSON.stringify({ meetingUpdate: { meetingPermissions: { canPair: false } } }),
       );
       expect(client.status).toBe("unpaired");
+    });
+
+    it("sends pair request when canPair becomes true and no token", async () => {
+      await makeConnectedClient({ token: undefined });
+      ws().emit("open");
+      ws().emit(
+        "message",
+        JSON.stringify({ meetingUpdate: { meetingPermissions: { canPair: true } } }),
+      );
+      expect(ws().send).toHaveBeenCalledOnce();
+      const payload = JSON.parse(ws().send.mock.calls[0][0]);
+      expect(payload.action).toBe("pair");
+      expect(payload).not.toHaveProperty("apiVersion");
+    });
+
+    it("does not send pair request twice even if canPair appears in multiple messages", async () => {
+      await makeConnectedClient({ token: undefined });
+      ws().emit("open");
+      const permMsg = JSON.stringify({ meetingUpdate: { meetingPermissions: { canPair: true } } });
+      ws().emit("message", permMsg);
+      ws().emit("message", permMsg);
+      expect(ws().send).toHaveBeenCalledOnce();
+    });
+
+    it("does not send pair request when a token is already present", async () => {
+      await makeConnectedClient({ token: "existing-token" });
+      ws().emit("open");
+      ws().emit(
+        "message",
+        JSON.stringify({ meetingUpdate: { meetingPermissions: { canPair: true } } }),
+      );
+      expect(ws().send).not.toHaveBeenCalled();
     });
 
     it("does not change isInMeeting from its default false", async () => {
