@@ -56,12 +56,68 @@ defaults write com.elgato.StreamDeck developerMode YES
 tail -f ~/Library/Application\ Support/com.elgato.StreamDeck/Plugins/com.kosmonautica.teams-control.sdPlugin/logs/com.kosmonautica.teams-control.0.log
 
 # Debug the Teams API connection manually
-node tools/ws-test.mjs           # connect without token (auto-pairs when canPair=true)
-node tools/ws-test.mjs --empty   # reproduce the empty-token bug (Teams ignores this)
+# Note: Teams allows only ONE WS client at a time — ws-test.mjs drops the plugin
+# connection while running. Press a key to reconnect the plugin afterward.
+node tools/ws-test.mjs              # no token — auto-pairs when canPair=true
+node tools/ws-test.mjs <token>      # test with a specific saved token
+node tools/ws-test.mjs --empty      # reproduce the empty-token bug (Teams ignores this)
+
+# Verify Teams API is listening on port 8124
+lsof -nP -iTCP:8124 | grep LISTEN
 
 # Regenerate icons (no npm deps needed)
 python3 tools/gen-icons.py
 ```
+
+## Debugging guide
+
+### Log file location
+
+```
+~/Library/Application Support/com.elgato.StreamDeck/Plugins/com.kosmonautica.teams-control.sdPlugin/logs/com.kosmonautica.teams-control.0.log
+```
+
+The log file is only created once the plugin loads its first action key. If it's
+missing, drag a key onto the layout and wait a second.
+
+### Healthy startup sequence (paired)
+
+```
+Teams Control plugin starting
+Connecting to Teams API (paired: true)
+Teams WebSocket open
+```
+
+Then a `meetingUpdate` JSON blob once in a meeting. All three lines in order = working.
+
+### Common failure patterns
+
+| Log line / symptom | Cause | Fix |
+|---|---|---|
+| `(paired: false)` on every start | No token stored | Join a meeting — auto-pairs |
+| Log stops after "Connecting…", no "open" | Teams API not on port 8124 | Enable API in Teams Settings → Privacy; restart Teams |
+| `Teams API error: Does not fit protocol standard` | Bad outbound command | Rebuild with `npm run build` |
+| `Cannot send "toggle-mute": Teams not connected` | Socket closed | Press key again — triggers immediate reconnect |
+| Key shows "PAIR" forever | `canPair: true` not received | Must be **in a meeting**; pairing is rejected outside |
+| Key grey forever after rebuild | `bin/plugin.js` stale or not loaded | Rebuild + `streamdeck restart`, check log exists |
+
+### Teams API one-client limit
+
+Teams rejects or drops any existing WebSocket connection when a new one opens.
+Running `ws-test.mjs` will silently disconnect the plugin. After stopping it,
+press any Stream Deck key to trigger an immediate reconnect.
+
+### Reset pairing
+
+If you need to force re-pairing (e.g. after reinstalling Teams):
+
+```bash
+streamdeck unlink com.kosmonautica.teams-control.sdPlugin
+streamdeck link com.kosmonautica.teams-control.sdPlugin
+streamdeck restart com.kosmonautica.teams-control
+```
+
+Then join a Teams meeting — pairing happens automatically within a few seconds.
 
 ## Architecture decisions
 
