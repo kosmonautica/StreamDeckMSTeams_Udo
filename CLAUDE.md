@@ -176,6 +176,7 @@ Notes:
 - `pair` must be sent WITHOUT `apiVersion`; send it when `meetingPermissions.canPair` becomes true
 - `query-meeting-state` with `apiVersion` is rejected ("Does not fit protocol standard Invalid action")
 - Teams automatically pushes `meetingUpdate` on connect and on every state change
+- `toggle-background-blur`: If this command is rejected by Teams API, try the alternative `toggle-blur` (shorter form)
 
 Inbound events:
 ```json
