@@ -43,6 +43,8 @@ export abstract class TeamsToggleAction extends SingletonAction {
 
   /** Forwards the press to the Teams client; silently ignored outside a meeting. */
   override onKeyDown(_ev: KeyDownEvent): void {
+    // Recover a dropped connection (and re-trigger pairing) on demand.
+    teamsClient.ensureConnected();
     // Outside a meeting the Teams API rejects the toggle, so the key is inert.
     if (!teamsClient.state.isInMeeting) return;
     this.config.toggle();

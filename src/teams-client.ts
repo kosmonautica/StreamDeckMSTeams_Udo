@@ -64,6 +64,26 @@ export class TeamsClient extends EventEmitter {
     this.connect();
   }
 
+  /**
+   * Reconnects immediately if the socket has dropped, resetting the backoff.
+   *
+   * Called on key presses so a button push recovers a stale connection instead
+   * of doing nothing while a long backoff timer is pending.
+   */
+  public ensureConnected(): void {
+    if (!this.started) {
+      void this.start();
+      return;
+    }
+    const live =
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING);
+    if (live) return;
+    this.reconnectAttempts = 0;
+    this.connect();
+  }
+
   /** Sends a mute-toggle command. Only effective when a meeting is active. */
   public toggleMute(): void {
     this.send("toggle-mute");
@@ -78,17 +98,20 @@ export class TeamsClient extends EventEmitter {
     clearTimeout(this.reconnectTimer);
     this.setStatus("connecting");
 
+    // Teams expects the `token` parameter to be present even before pairing —
+    // an empty value signals "not paired yet" and triggers the pairing prompt.
     const params = new URLSearchParams({
+      token: this.token ?? "",
       "protocol-version": "2.0.0",
       manufacturer: MANUFACTURER,
       device: DEVICE,
       app: APP,
       "app-version": APP_VERSION,
     });
-    if (this.token) params.set("token", this.token);
 
-    const ws = new WebSocket(`${HOST}/?${params.toString()}`);
+    const ws = new WebSocket(`${HOST}?${params.toString()}`);
     this.ws = ws;
+    streamDeck.logger.info(`Connecting to Teams API (paired: ${Boolean(this.token)})`);
 
     ws.on("open", () => {
       this.reconnectAttempts = 0;

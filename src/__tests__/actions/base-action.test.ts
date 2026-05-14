@@ -36,6 +36,7 @@ const mockClient = {
   on: vi.fn(),
   off: vi.fn(),
   start: vi.fn().mockResolvedValue(undefined),
+  ensureConnected: vi.fn(),
   state: { ...DEFAULT_MEETING_STATE } as MeetingState,
   status: "disconnected" as ConnectionStatus,
   toggleMute: vi.fn(),
@@ -129,6 +130,13 @@ describe("TeamsToggleAction", () => {
       mockClient.state.isInMeeting = false;
       action.onKeyDown({} as never);
       expect(toggleFn).not.toHaveBeenCalled();
+    });
+
+    it("still kicks a reconnect attempt", async () => {
+      const action = await makeTestAction();
+      mockClient.state.isInMeeting = false;
+      action.onKeyDown({} as never);
+      expect(mockClient.ensureConnected).toHaveBeenCalledOnce();
     });
   });
 

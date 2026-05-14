@@ -67,6 +67,14 @@ parameter in the WebSocket URL.
 
 **Reconnect strategy** — exponential backoff from 2 s up to a 30 s cap.
 `reconnectAttempts` is reset to 0 on each successful `open` event.
+`ensureConnected()` (called from `onKeyDown`) bypasses the backoff timer so a
+key press can recover a dropped connection immediately.
+
+**ESM module marker** — the bundle is ESM, but once the `.sdPlugin` folder is
+linked into Stream Deck's plugins directory it no longer sits under the
+project's `package.json`. `rollup.config.mjs` therefore emits a
+`bin/package.json` containing `{"type":"module"}`; without it Node loads
+`plugin.js` as CommonJS and crashes on the first `import`.
 
 **Rendering** — each action uses `setImage` (explicit icon path) rather than
 relying solely on `setState` manifest images, because there are three visual

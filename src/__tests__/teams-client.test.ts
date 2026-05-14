@@ -98,9 +98,10 @@ describe("TeamsClient", () => {
       expect(url.searchParams.get("app")).toBe("TeamsControl");
     });
 
-    it("omits token param when none is stored", async () => {
+    it("includes an empty token param when not yet paired", async () => {
       await makeConnectedClient({ token: undefined });
-      expect(ws().url).not.toContain("token=");
+      // Teams needs the token param present (empty) to trigger the pairing prompt.
+      expect(new URL(ws().url).searchParams.get("token")).toBe("");
     });
 
     it("appends stored token as query param", async () => {
@@ -333,6 +334,35 @@ describe("TeamsClient", () => {
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining("toggle-mute"),
       );
+    });
+  });
+
+  describe("ensureConnected()", () => {
+    it("starts the client if it was never started", async () => {
+      const { TeamsClient } = await import("../teams-client.js");
+      const client = new TeamsClient();
+      client.ensureConnected();
+      // start() is async; allow the microtask queue to flush
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(wsInstanceCount).toBe(1);
+    });
+
+    it("does nothing while the socket is open", async () => {
+      const client = await makeConnectedClient();
+      ws().emit("open");
+      client.ensureConnected();
+      expect(wsInstanceCount).toBe(1);
+    });
+
+    it("reconnects immediately when the socket has dropped", async () => {
+      const client = await makeConnectedClient();
+      ws().emit("open");
+      ws().readyState = MockWs.CLOSED;
+      ws().emit("close", 1006);
+      // A reconnect is scheduled with backoff; ensureConnected should bypass it.
+      client.ensureConnected();
+      expect(wsInstanceCount).toBe(2);
     });
   });
 });
