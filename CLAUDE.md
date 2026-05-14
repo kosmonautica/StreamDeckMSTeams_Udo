@@ -22,7 +22,7 @@ src/
     toggle-mute.ts           Concrete mute key (UUID: …teams-control.mute)
     toggle-camera.ts         Concrete camera key (UUID: …teams-control.camera)
   __tests__/
-    teams-client.test.ts     Unit tests for TeamsClient (51 tests total across all files)
+    teams-client.test.ts     Unit tests for TeamsClient (61 tests total across all files)
     actions/
       base-action.test.ts    Unit tests for TeamsToggleAction rendering/key logic
       action-configs.test.ts Unit tests for per-action config (isActive, icons, toggle)
@@ -34,6 +34,7 @@ com.kosmonautica.teams-control.sdPlugin/
 
 tools/
   gen-icons.py               Pure-stdlib Python script that regenerates all PNGs
+  ws-test.mjs                Manual WebSocket probe for debugging the Teams API connection
 ```
 
 ## Common commands
@@ -41,12 +42,22 @@ tools/
 ```bash
 npm run build        # TypeScript → rollup → bin/plugin.js
 npm run watch        # build + auto-restart plugin on save
-npm test             # vitest (all 51 tests, ~320 ms)
+npm test             # vitest (all 61 tests, ~350 ms)
 npm run test:watch   # vitest in watch mode
 
 # Install / reinstall the plugin locally
 streamdeck link com.kosmonautica.teams-control.sdPlugin
-streamdeck restart com.kosmonautica.teams-control
+streamdeck restart com.kosmonautica.teams-control   # requires developer mode
+
+# Enable developer mode (once, then restart Stream Deck app)
+defaults write com.elgato.StreamDeck developerMode YES
+
+# Plugin logs (new SDK writes here, not in ~/Library/Logs/ElgatoStreamDeck/)
+tail -f ~/Library/Application\ Support/com.elgato.StreamDeck/Plugins/com.kosmonautica.teams-control.sdPlugin/logs/com.kosmonautica.teams-control.0.log
+
+# Debug the Teams API connection manually
+node tools/ws-test.mjs           # connect without token (auto-pairs when canPair=true)
+node tools/ws-test.mjs --empty   # reproduce the empty-token bug (Teams ignores this)
 
 # Regenerate icons (no npm deps needed)
 python3 tools/gen-icons.py
@@ -59,11 +70,18 @@ one connection so there is never a duplicate pairing dialog or duplicated state
 events. The singleton is exported as `teamsClient`; the class itself (`TeamsClient`)
 is also exported for isolated unit-test instantiation.
 
-**Token persistence** — the Teams API issues a pairing token on first connect
-(the user accepts a dialog in Teams). The token is stored via
-`streamDeck.settings.setGlobalSettings` so it survives plugin restarts. On next
-start, `getGlobalSettings` retrieves it and it is sent as a `token=` query
-parameter in the WebSocket URL.
+**Auto-pairing** — on first connect (no token), Teams pushes `meetingPermissions`
+with `canPair: true` once the user is in a meeting. The plugin responds with
+`{"action":"pair","parameters":{},"requestId":N}` (no `apiVersion` — required).
+Teams immediately returns `{"tokenRefresh":"<token>"}` with no user interaction
+needed. The plugin saves the token and reconnects; from then on `meetingState`
+is included in every `meetingUpdate`.
+
+**Token persistence** — the pairing token is stored via
+`streamDeck.settings.setGlobalSettings` and loaded at startup, so pairing only
+happens once per machine. The token is sent as `token=` in the WebSocket URL.
+Omitting the token param (not sending an empty one) is critical: an empty
+`token=` causes Teams to silently ignore the connection entirely.
 
 **Reconnect strategy** — exponential backoff from 2 s up to a 30 s cap.
 `reconnectAttempts` is reset to 0 on each successful `open` event.
@@ -83,32 +101,35 @@ still called to keep Stream Deck's internal toggle index consistent.
 
 ## Teams API reference
 
-Connect URL:
+Connect URL (omit `token=` when unpaired — empty value causes silent rejection):
 ```
-ws://localhost:8124/?protocol-version=2.0.0&manufacturer=…&device=…&app=…&app-version=…&token=…
+ws://localhost:8124/?protocol-version=2.0.0&manufacturer=…&device=…&app=…&app-version=…
+ws://localhost:8124/?protocol-version=2.0.0&…&token=<token>   ← after pairing
 ```
 
-Outbound commands (sent only for user-initiated actions; Teams pushes state automatically on connect):
+Outbound commands:
 ```json
+{ "action": "pair", "parameters": {}, "requestId": N }
 { "apiVersion": "2.0.0", "action": "toggle-mute",  "parameters": {}, "requestId": N }
 { "apiVersion": "2.0.0", "action": "toggle-video", "parameters": {}, "requestId": N }
 ```
 
-Note: `query-meeting-state` with `apiVersion` is rejected by Teams ("Does not fit protocol
-standard Invalid action"). Teams automatically pushes `meetingUpdate` on connect and on every
-state change, so no explicit query is needed.
+Notes:
+- `pair` must be sent WITHOUT `apiVersion`; send it when `meetingPermissions.canPair` becomes true
+- `query-meeting-state` with `apiVersion` is rejected ("Does not fit protocol standard Invalid action")
+- Teams automatically pushes `meetingUpdate` on connect and on every state change
 
 Inbound events:
 ```json
 { "tokenRefresh": "<token>" }
 { "response": "Success", "requestId": 0 }
-{ "meetingUpdate": { "meetingPermissions": { "canToggleMute": bool, "canToggleVideo": bool, … } } }
+{ "meetingUpdate": { "meetingPermissions": { "canToggleMute": bool, "canPair": bool, … } } }
 { "meetingUpdate": { "meetingState": { "isMuted": bool, "isVideoOn": bool, "isInMeeting": bool, … }, "meetingPermissions": { … } } }
-{ "errorMsg": "Does not fit protocol standard…" }
+{ "errorMsg": "…" }
 ```
 
-Teams always sends a `meetingUpdate` with `meetingPermissions` on connect. When in a meeting it
-additionally includes `meetingState`. Only `meetingState` drives the plugin's internal state and
-button rendering.
+On connect (unpaired): Teams sends `meetingPermissions` only. Plugin responds with `pair` when
+`canPair: true` → Teams returns `tokenRefresh` immediately. On connect (paired): Teams sends
+`meetingUpdate` with both `meetingState` and `meetingPermissions` whenever state changes.
 
 [teams-api]: https://learn.microsoft.com/en-us/microsoftteams/platform/apps-in-teams-meetings/build-apps-for-teams-meeting-stage
