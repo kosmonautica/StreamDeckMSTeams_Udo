@@ -60,7 +60,17 @@ export abstract class TeamsToggleAction extends SingletonAction {
   private renderOne(action: Action): void {
     // The plugin only registers Keypad controllers, so every action is a key.
     if (!action.isKey()) return;
-    const { state } = teamsClient;
+    const { state, status } = teamsClient;
+
+    // Show a diagnostic title so connection state is visible directly on the key.
+    const statusTitle: Record<typeof status, string> = {
+      connecting: "...",
+      unpaired: "PAIR",  // Teams dialog is waiting to be accepted
+      disconnected: "off",
+      paired: "",
+    };
+    void action.setTitle(statusTitle[status] ?? "");
+
     if (!state.isInMeeting) {
       void action.setImage(this.config.inactiveIcon);
       void action.setState(0);

@@ -54,6 +54,7 @@ function makeMockAction() {
     isKey: vi.fn(() => true as const),
     setImage: vi.fn().mockResolvedValue(undefined),
     setState: vi.fn().mockResolvedValue(undefined),
+    setTitle: vi.fn().mockResolvedValue(undefined),
   };
 }
 
