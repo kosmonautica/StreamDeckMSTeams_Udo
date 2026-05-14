@@ -64,6 +64,25 @@
           "Title": ""
         }
       ]
+    },
+    {
+      "Name": "Teams Background Blur",
+      "UUID": "com.kosmonautica.teams-control.blur",
+      "Icon": "imgs/actions/blur-on",
+      "Tooltip": "Toggle background blur in a Microsoft Teams meeting.",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/blur-on",
+          "Name": "On",
+          "Title": ""
+        },
+        {
+          "Image": "imgs/actions/blur-off",
+          "Name": "Off",
+          "Title": ""
+        }
+      ]
     }
   ]
 }

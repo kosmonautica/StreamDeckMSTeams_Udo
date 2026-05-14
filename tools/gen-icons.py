@@ -57,6 +57,16 @@ class Canvas:
                 cov = max(0.0, min(1.0, r - d + 0.5))
                 self._blend(x, y, color, cov * alpha)
 
+    def arc(self, cx, cy, r, a0, a1, width, color, alpha=1.0):
+        """Draw an arc from angle a0 to a1 (radians). In screen coords y+ is down."""
+        steps = max(int(r * abs(a1 - a0)) * 4 + 1, 30)
+        for i in range(steps + 1):
+            t = i / steps
+            angle = a0 + (a1 - a0) * t
+            x = cx + r * math.cos(angle)
+            y = cy + r * math.sin(angle)
+            self.circle(x, y, width / 2, color, alpha)
+
     def line(self, x0, y0, x1, y1, width, color, alpha=1.0):
         steps = int(math.hypot(x1 - x0, y1 - y0)) * 3 + 1
         for i in range(steps + 1):
@@ -102,29 +112,57 @@ class Canvas:
             f.write(png)
 
 
-def mic(c, fg):
+def mic(c, fg, bg):
+    """Standard studio/podcast mic: vertical capsule + U-arc housing + stem + base."""
     s = c.size
-    c.rounded_rect(0.42 * s, 0.17 * s, 0.58 * s, 0.50 * s, 0.08 * s, fg)
-    c.line(0.50 * s, 0.50 * s, 0.50 * s, 0.66 * s, 0.05 * s, fg)
-    c.line(0.36 * s, 0.74 * s, 0.64 * s, 0.74 * s, 0.05 * s, fg)
-    c.line(0.34 * s, 0.45 * s, 0.34 * s, 0.55 * s, 0.045 * s, fg)
-    c.line(0.66 * s, 0.45 * s, 0.66 * s, 0.55 * s, 0.045 * s, fg)
-    c.line(0.34 * s, 0.55 * s, 0.50 * s, 0.66 * s, 0.045 * s, fg)
-    c.line(0.66 * s, 0.55 * s, 0.50 * s, 0.66 * s, 0.045 * s, fg)
+    # Capsule (the mic body, tall rounded rect)
+    c.rounded_rect(0.37 * s, 0.10 * s, 0.63 * s, 0.52 * s, 0.13 * s, fg)
+    # U-shaped housing arc: a0=0 (right) sweeping through pi/2 (down) to pi (left)
+    # Arc spans from (0.73, 0.42) around bottom (0.50, 0.65) to (0.27, 0.42)
+    c.arc(0.50 * s, 0.42 * s, 0.23 * s, 0, math.pi, 0.05 * s, fg)
+    # Stem: housing bottom to base
+    c.line(0.50 * s, 0.65 * s, 0.50 * s, 0.75 * s, 0.05 * s, fg)
+    # Base: horizontal bar
+    c.line(0.34 * s, 0.77 * s, 0.66 * s, 0.77 * s, 0.06 * s, fg)
 
 
-def camera(c, fg):
+def camera(c, fg, bg):
+    """Video camera icon: hollow rounded-rect body + outlined triangle (tip points left)."""
     s = c.size
-    c.rounded_rect(0.26 * s, 0.36 * s, 0.60 * s, 0.64 * s, 0.06 * s, fg)
-    c.triangle([(0.62 * s, 0.42 * s), (0.62 * s, 0.58 * s),
-                (0.76 * s, 0.50 * s)], fg)
+    sw = 0.065  # stroke width as fraction of s
+
+    # Body: filled outer rect, then punch hollow with bg color
+    r_out = 0.12
+    r_in = max(r_out - sw, 0.02)
+    c.rounded_rect(0.07 * s, 0.26 * s, 0.63 * s, 0.74 * s, r_out * s, fg)
+    c.rounded_rect((0.07 + sw) * s, (0.26 + sw) * s,
+                   (0.63 - sw) * s, (0.74 - sw) * s, r_in * s, bg)
+
+    # Triangle outline: right vertical edge + two diagonals converging left
+    lw = sw * s
+    c.line(0.91 * s, 0.29 * s, 0.91 * s, 0.71 * s, lw, fg)  # right vertical
+    c.line(0.91 * s, 0.29 * s, 0.65 * s, 0.50 * s, lw, fg)  # top to tip
+    c.line(0.91 * s, 0.71 * s, 0.65 * s, 0.50 * s, lw, fg)  # bottom to tip
+
+
+def blur(c, fg, bg):
+    """Background blur icon: sharp person silhouette + bokeh circles in background."""
+    s = c.size
+    # Background bokeh (out-of-focus circles at the four corners, semi-transparent)
+    c.circle(0.21 * s, 0.27 * s, 0.11 * s, fg, 0.40)
+    c.circle(0.80 * s, 0.27 * s, 0.12 * s, fg, 0.40)
+    c.circle(0.19 * s, 0.74 * s, 0.10 * s, fg, 0.40)
+    c.circle(0.81 * s, 0.72 * s, 0.11 * s, fg, 0.40)
+    # Person silhouette (the clear foreground subject): head + torso
+    c.circle(0.50 * s, 0.32 * s, 0.12 * s, fg)
+    c.rounded_rect(0.36 * s, 0.45 * s, 0.64 * s, 0.70 * s, 0.09 * s, fg)
 
 
 def make(name, bg, glyph, fg, slash, sizes):
     for size in sizes:
         c = Canvas(size)
         c.rounded_rect(0, 0, size, size, size * 0.18, bg)
-        glyph(c, fg)
+        glyph(c, fg, bg)
         if slash:
             s = size
             c.line(0.24 * s, 0.24 * s, 0.76 * s, 0.76 * s, 0.10 * s, bg)
@@ -138,13 +176,16 @@ def make(name, bg, glyph, fg, slash, sizes):
 ACTION_SIZES = (72, 144)
 PLUGIN_SIZES = (28, 56)
 
-make("actions/mic-on", GREEN, mic, WHITE, False, ACTION_SIZES)
-make("actions/mic-off", RED, mic, WHITE, True, ACTION_SIZES)
-make("actions/mic-inactive", GREY, mic, FADED, False, ACTION_SIZES)
-make("actions/camera-on", GREEN, camera, WHITE, False, ACTION_SIZES)
-make("actions/camera-off", RED, camera, WHITE, True, ACTION_SIZES)
-make("actions/camera-inactive", GREY, camera, FADED, False, ACTION_SIZES)
-make("plugin/icon", DARK, mic, WHITE, False, PLUGIN_SIZES)
+make("actions/mic-on",       GREEN, mic,    WHITE, False, ACTION_SIZES)
+make("actions/mic-off",      RED,   mic,    WHITE, True,  ACTION_SIZES)
+make("actions/mic-inactive", GREY,  mic,    FADED, False, ACTION_SIZES)
+make("actions/camera-on",       GREEN, camera, WHITE, False, ACTION_SIZES)
+make("actions/camera-off",      RED,   camera, WHITE, True,  ACTION_SIZES)
+make("actions/camera-inactive", GREY,  camera, FADED, False, ACTION_SIZES)
+make("actions/blur-on",       GREEN, blur, WHITE, False, ACTION_SIZES)
+make("actions/blur-off",      RED,   blur, WHITE, True,  ACTION_SIZES)
+make("actions/blur-inactive", GREY,  blur, FADED, False, ACTION_SIZES)
+make("plugin/icon",          DARK, mic, WHITE, False, PLUGIN_SIZES)
 make("plugin/category-icon", DARK, mic, WHITE, False, PLUGIN_SIZES)
 
 print("Icons written to", os.path.normpath(OUT))

@@ -1,7 +1,7 @@
 # Teams Control — Stream Deck Plugin
 
-A Stream Deck plugin that toggles **Microsoft Teams mute and camera** — and it
-works **globally**, even when Teams is not the foreground app.
+A Stream Deck plugin that toggles **Microsoft Teams mute, camera and background
+blur** — and it works **globally**, even when Teams is not the foreground app.
 
 It does this through the **official Microsoft Teams third-party app API**: a
 local WebSocket server (`ws://localhost:8124`) that the *new* Teams client
@@ -13,7 +13,8 @@ real API (not a simulated keypress) it does not require Teams to be focused.
 
 - **Teams Mute** key — toggles your microphone, shows live (green) / muted (red).
 - **Teams Camera** key — toggles your camera, shows on (green) / off (red).
-- Both keys reflect the real Teams state: if you mute from inside Teams, the
+- **Teams Background Blur** key — toggles background blur, shows on (green) / off (red).
+- All keys reflect the real Teams state: if you mute from inside Teams, the
   key updates automatically.
 - Outside a meeting the keys show a greyed-out icon and do nothing (the Teams
   API only allows toggling while you are in a meeting/call).
@@ -43,7 +44,8 @@ streamdeck restart com.kosmonautica.teams-control
 
 ### 3. Add the keys and pair
 
-1. In the Stream Deck app, drag **Teams Mute** and/or **Teams Camera** onto a key.
+1. In the Stream Deck app, drag **Teams Mute**, **Teams Camera** and/or
+   **Teams Background Blur** onto keys.
 2. Join any Teams meeting (a "Meet now" with yourself is enough to test).
 3. The key briefly shows **PAIR** while the plugin negotiates with Teams.
    Pairing happens automatically — no dialog to click. After a few seconds the
@@ -63,7 +65,8 @@ Stream Deck key ──► plugin.js (Node) ──► ws://localhost:8124 ──�
   broadcasts meeting-state updates.
 - `src/actions/base-action.ts` — shared key behaviour: subscribe to state,
   render the icon, forward presses while in a meeting.
-- `src/actions/toggle-mute.ts` / `toggle-camera.ts` — the two concrete actions.
+- `src/actions/toggle-mute.ts` / `toggle-camera.ts` / `toggle-blur.ts` — the
+  three concrete actions.
 
 ## Development
 
@@ -217,7 +220,7 @@ pkill -x "Stream Deck" && open -a "Stream Deck"
 ## Known limitations
 
 - Works only with the **new** Teams client, not classic Teams.
-- Mute/camera can only be toggled **while in a meeting or call** — the Teams
-  API restricts this, hence the greyed-out state otherwise.
+- Mute, camera and background blur can only be toggled **while in a meeting or
+  call** — the Teams API restricts this, hence the greyed-out state otherwise.
 - Pairing happens once per machine; the token is stored in Stream Deck's global
   plugin settings.

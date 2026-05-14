@@ -95,6 +95,11 @@ export class TeamsClient extends EventEmitter {
     this.send("toggle-video");
   }
 
+  /** Sends a background blur toggle command. Only effective when a meeting is active. */
+  public toggleBackgroundBlur(): void {
+    this.send("toggle-background-blur");
+  }
+
   private connect(): void {
     clearTimeout(this.reconnectTimer);
     this.setStatus("connecting");

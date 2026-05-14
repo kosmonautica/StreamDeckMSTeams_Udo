@@ -2,9 +2,9 @@
 
 ## Project overview
 
-A personal Elgato Stream Deck plugin that toggles Microsoft Teams **mute** and
-**camera** via the official [Teams third-party app API][teams-api] — a local
-WebSocket server Teams exposes on `ws://localhost:8124`. The plugin works
+A personal Elgato Stream Deck plugin that toggles Microsoft Teams **mute**,
+**camera** and **background blur** via the official [Teams third-party app
+API][teams-api] — a local WebSocket server Teams exposes on `ws://localhost:8124`. The plugin works
 globally (Teams does not need to be in the foreground) because the API is a
 real local process interface, not a simulated keypress.
 
@@ -15,12 +15,13 @@ new Microsoft Teams (not the classic client).
 
 ```
 src/
-  plugin.ts                  Entry point: registers both actions, calls streamDeck.connect()
+  plugin.ts                  Entry point: registers all three actions, calls streamDeck.connect()
   teams-client.ts            Singleton WebSocket client; shared by all actions
   actions/
     base-action.ts           Abstract base: subscribe/render/forward key presses
     toggle-mute.ts           Concrete mute key (UUID: …teams-control.mute)
     toggle-camera.ts         Concrete camera key (UUID: …teams-control.camera)
+    toggle-blur.ts           Concrete background-blur key (UUID: …teams-control.blur)
   __tests__/
     teams-client.test.ts     Unit tests for TeamsClient (61 tests total across all files)
     actions/
@@ -121,9 +122,9 @@ Then join a Teams meeting — pairing happens automatically within a few seconds
 
 ## Architecture decisions
 
-**Single WebSocket connection** (`TeamsClient` singleton) — both actions share
-one connection so there is never a duplicate pairing dialog or duplicated state
-events. The singleton is exported as `teamsClient`; the class itself (`TeamsClient`)
+**Single WebSocket connection** (`TeamsClient` singleton) — all three actions
+share one connection so there is never a duplicate pairing dialog or duplicated
+state events. The singleton is exported as `teamsClient`; the class itself (`TeamsClient`)
 is also exported for isolated unit-test instantiation.
 
 **Auto-pairing** — on first connect (no token), Teams pushes `meetingPermissions`
@@ -166,8 +167,9 @@ ws://localhost:8124/?protocol-version=2.0.0&…&token=<token>   ← after pairin
 Outbound commands:
 ```json
 { "action": "pair", "parameters": {}, "requestId": N }
-{ "apiVersion": "2.0.0", "action": "toggle-mute",  "parameters": {}, "requestId": N }
-{ "apiVersion": "2.0.0", "action": "toggle-video", "parameters": {}, "requestId": N }
+{ "apiVersion": "2.0.0", "action": "toggle-mute",             "parameters": {}, "requestId": N }
+{ "apiVersion": "2.0.0", "action": "toggle-video",            "parameters": {}, "requestId": N }
+{ "apiVersion": "2.0.0", "action": "toggle-background-blur",  "parameters": {}, "requestId": N }
 ```
 
 Notes:
