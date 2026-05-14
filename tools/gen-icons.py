@@ -127,16 +127,22 @@ def mic(c, fg, bg):
 
 
 def camera(c, fg, bg):
-    """Video camera icon: rectangular body + rightward-pointing triangle (lens horn)."""
+    """Video camera icon: hollow rounded-rect body + outlined triangle (tip points left)."""
     s = c.size
-    # Camera body
-    c.rounded_rect(0.13 * s, 0.33 * s, 0.61 * s, 0.67 * s, 0.08 * s, fg)
-    # Lens horn: filled triangle pointing right
-    c.triangle([
-        (0.62 * s, 0.38 * s),
-        (0.62 * s, 0.62 * s),
-        (0.84 * s, 0.50 * s),
-    ], fg)
+    sw = 0.065  # stroke width as fraction of s
+
+    # Body: filled outer rect, then punch hollow with bg color
+    r_out = 0.12
+    r_in = max(r_out - sw, 0.02)
+    c.rounded_rect(0.07 * s, 0.26 * s, 0.63 * s, 0.74 * s, r_out * s, fg)
+    c.rounded_rect((0.07 + sw) * s, (0.26 + sw) * s,
+                   (0.63 - sw) * s, (0.74 - sw) * s, r_in * s, bg)
+
+    # Triangle outline: right vertical edge + two diagonals converging left
+    lw = sw * s
+    c.line(0.91 * s, 0.29 * s, 0.91 * s, 0.71 * s, lw, fg)  # right vertical
+    c.line(0.91 * s, 0.29 * s, 0.65 * s, 0.50 * s, lw, fg)  # top to tip
+    c.line(0.91 * s, 0.71 * s, 0.65 * s, 0.50 * s, lw, fg)  # bottom to tip
 
 
 def blur(c, fg, bg):
