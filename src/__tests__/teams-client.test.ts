@@ -387,6 +387,15 @@ describe("TeamsClient", () => {
       expect(payload.action).toBe("toggle-video");
     });
 
+    it("sends toggle-background-blur action", async () => {
+      const client = await makeConnectedClient();
+      ws().emit("open");
+      client.toggleBackgroundBlur();
+      const payload = JSON.parse(ws().send.mock.calls.at(-1)![0]);
+      expect(payload.action).toBe("toggle-background-blur");
+      expect(payload.apiVersion).toBe("2.0.0");
+    });
+
     it("increments requestId on each send", async () => {
       const client = await makeConnectedClient();
       ws().emit("open");
