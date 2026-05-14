@@ -156,6 +156,12 @@ relying solely on `setState` manifest images, because there are three visual
 states (on, off, not-in-meeting) but only two manifest states. `setState` is
 still called to keep Stream Deck's internal toggle index consistent.
 
+**Optimistic state updates for blur** — the Teams API does not send back the
+updated `isBackgroundBlurred` state after the `toggle-background-blur` command
+(unlike mute/video which do). To provide immediate visual feedback, the plugin
+optimistically updates the local blur state when the user presses the button,
+then allows Teams to correct it if needed. This ensures responsive UI.
+
 ## Teams API reference
 
 Connect URL (omit `token=` when unpaired — empty value causes silent rejection):
