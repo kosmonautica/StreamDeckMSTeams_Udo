@@ -28,6 +28,25 @@ real API (not a simulated keypress) it does not require Teams to be focused.
 
 ## One-time setup
 
+### 0. Install Node.js (includes npm)
+
+Node.js 20 LTS is required to build the plugin. The easiest way on macOS:
+
+```bash
+# Install Homebrew if you don't have it (https://brew.sh)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Then install Node.js
+brew install node@20
+```
+
+Verify the installation:
+
+```bash
+node --version   # should print v20.x.x
+npm --version    # should print 10.x.x or higher
+```
+
 ### 1. Enable the Teams API
 
 In the new Teams: **Settings → Privacy → Third-party app API** → turn it **on**.
