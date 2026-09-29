@@ -1,5 +1,27 @@
 # Teams Control — Stream Deck Plugin
 
+> [!CAUTION]
+> # ⛔ This plugin no longer works — Microsoft shut down the API it relies on
+>
+> Teams Control talks to Microsoft Teams through the **Teams "Third-party app
+> API"** (a local WebSocket server on `ws://localhost:8124`). According to
+> reports, Microsoft **retired this API on 30 June 2026 without a replacement**.
+> Current Teams versions (tested with `26163.407.4839.8659`) no longer accept
+> connections on it, so the mute, camera and background-blur keys **do nothing**.
+>
+> **This is not a bug in the plugin and it cannot be fixed on the plugin side.**
+> As long as Teams does not expose the API, there is nothing to connect to.
+>
+> **Quick check:** run `lsof -nP -iTCP:8124 | grep LISTEN`. If it prints
+> nothing, Teams is not listening and the plugin cannot work.
+>
+> This repository is kept for reference only. The rest of this README describes
+> how the plugin worked while the API was still available.
+>
+> **Possible alternatives** (not implemented here): Stream Deck hotkeys that
+> send the Teams keyboard shortcuts (no live state, no blur toggle), or
+> reading the mute state via the macOS Accessibility API.
+
 A Stream Deck plugin that toggles **Microsoft Teams mute, camera and background
 blur** — and it works **globally**, even when Teams is not the foreground app.
 
